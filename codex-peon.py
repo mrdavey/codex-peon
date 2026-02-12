@@ -43,7 +43,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "annoyed_threshold": 3,
     "annoyed_window_seconds": 10,
     "session_start_idle_seconds": 120,
-    "prevent_overlap": True,
+    "prevent_overlap": False,
+    # Overlap blocking scope:
+    # - thread: suppress only within the same thread-id/session
+    # - global: suppress across all terminals/sessions
+    "overlap_scope": "thread",
     "cooldowns_seconds": {
         "default": 0,
         "greeting": 0,
@@ -100,6 +104,7 @@ CATEGORY_FALLBACKS: dict[str, list[str]] = {
 }
 PREVIEW_CATEGORIES = ["greeting", "acknowledge", "complete", "permission", "error", "resource_limit", "annoyed"]
 GREETING_MODES = {"launch", "turn_start", "both", "off"}
+OVERLAP_SCOPES = {"thread", "global"}
 DEFAULT_STATE: dict[str, Any] = {
     "last_played": {},
     "last_category_ts": {},
@@ -107,6 +112,7 @@ DEFAULT_STATE: dict[str, Any] = {
     "turn_timestamps": {},
     "last_event_ts": 0.0,
     "playback_pid": None,
+    "playback_pid_by_thread": {},
 }
 
 
@@ -310,6 +316,15 @@ def _greeting_mode(cfg: dict[str, Any]) -> str:
     return "launch"
 
 
+def _overlap_scope(cfg: dict[str, Any]) -> str:
+    raw = cfg.get("overlap_scope", "thread")
+    if isinstance(raw, str):
+        scope = raw.strip().lower()
+        if scope in OVERLAP_SCOPES:
+            return scope
+    return "thread"
+
+
 def _thread_key(payload: dict[str, Any]) -> str:
     raw = payload.get("thread-id")
     if isinstance(raw, str) and raw.strip():
@@ -363,15 +378,25 @@ def _is_on_category_cooldown(
     return (now_ts - last_ts) < cooldown_seconds
 
 
-def _overlap_blocked(cfg: dict[str, Any], state: dict[str, Any]) -> bool:
+def _overlap_blocked(cfg: dict[str, Any], state: dict[str, Any], thread_key: str) -> bool:
     if not bool(cfg.get("prevent_overlap", True)):
+        return False
+
+    if _overlap_scope(cfg) == "thread":
+        pid_map = state.get("playback_pid_by_thread")
+        if not isinstance(pid_map, dict):
+            pid_map = {}
+            state["playback_pid_by_thread"] = pid_map
+
+        pid = pid_map.get(thread_key)
+        if _is_pid_running(pid):
+            return True
+        pid_map.pop(thread_key, None)
         return False
 
     pid = state.get("playback_pid")
     if _is_pid_running(pid):
         return True
-
-    # Clear stale value.
     state["playback_pid"] = None
     return False
 
@@ -381,6 +406,7 @@ def maybe_play_category(
     state: dict[str, Any],
     category: str,
     now_ts: float,
+    thread_key: str = "__default__",
 ) -> bool:
     resolved_category = resolve_enabled_category(cfg, category)
     if not resolved_category:
@@ -389,7 +415,7 @@ def maybe_play_category(
     if _is_on_category_cooldown(cfg, state, resolved_category, now_ts):
         return False
 
-    if _overlap_blocked(cfg, state):
+    if _overlap_blocked(cfg, state, thread_key):
         return False
 
     sound_path, used_category = pick_sound(cfg, state, resolved_category)
@@ -405,7 +431,19 @@ def maybe_play_category(
         last_category_ts = {}
         state["last_category_ts"] = last_category_ts
     last_category_ts[used_category] = now_ts
-    state["playback_pid"] = playback_pid
+    if _overlap_scope(cfg) == "thread":
+        pid_map = state.get("playback_pid_by_thread")
+        if not isinstance(pid_map, dict):
+            pid_map = {}
+            state["playback_pid_by_thread"] = pid_map
+        if playback_pid is None:
+            pid_map.pop(thread_key, None)
+        else:
+            pid_map[thread_key] = playback_pid
+        # Keep global key clear when using thread-scoped overlap.
+        state["playback_pid"] = None
+    else:
+        state["playback_pid"] = playback_pid
     return True
 
 
@@ -554,7 +592,7 @@ def handle_hook_payload(raw_payload: str) -> int:
         else:
             preferred_category = inferred_category
 
-    maybe_play_category(cfg, state, preferred_category, now_ts)
+    maybe_play_category(cfg, state, preferred_category, now_ts, thread_key=thread_key)
     save_state(state)
     return 0
 
@@ -668,7 +706,7 @@ def cmd_launch(codex_args: list[str]) -> int:
         greeting_mode = _greeting_mode(cfg)
         if greeting_mode in {"launch", "both"}:
             state = load_state()
-            maybe_play_category(cfg, state, "greeting", time.time())
+            maybe_play_category(cfg, state, "greeting", time.time(), thread_key="__launch__")
             save_state(state)
 
     codex_exe = shutil.which("codex")

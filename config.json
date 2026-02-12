@@ -15,7 +15,8 @@
   "annoyed_threshold": 3,
   "annoyed_window_seconds": 10,
   "session_start_idle_seconds": 120,
-  "prevent_overlap": true,
+  "prevent_overlap": false,
+  "overlap_scope": "thread",
   "cooldowns_seconds": {
     "default": 0,
     "greeting": 0,

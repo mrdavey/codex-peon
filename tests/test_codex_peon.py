@@ -95,6 +95,11 @@ class CodexPeonTests(unittest.TestCase):
         self.assertNotIn("peon:greeting", keys)
         self.assertEqual(mocked_play.call_count, 2)
 
+    def test_default_noise_controls_for_multi_window_use(self) -> None:
+        cfg = self._load_config()
+        self.assertFalse(cfg["prevent_overlap"])
+        self.assertEqual(cfg["cooldowns_seconds"]["default"], 0)
+
     def test_turn_start_greeting_mode_plays_greeting(self) -> None:
         cfg = self._load_config()
         cfg["greeting_mode"] = "turn_start"
@@ -166,9 +171,10 @@ class CodexPeonTests(unittest.TestCase):
 
         self.assertEqual(mocked_play.call_count, 1)
 
-    def test_overlap_prevents_new_playback(self) -> None:
+    def test_overlap_prevents_new_playback_global_scope(self) -> None:
         cfg = self._load_config()
         cfg["prevent_overlap"] = True
+        cfg["overlap_scope"] = "global"
         codex_peon._save_json(codex_peon.CONFIG_PATH, cfg)
 
         state = codex_peon.load_state()
@@ -181,6 +187,24 @@ class CodexPeonTests(unittest.TestCase):
             codex_peon.handle_hook_payload(self._payload("thread-f", "1", "Done."))
 
         self.assertEqual(mocked_play.call_count, 0)
+
+    def test_overlap_thread_scope_blocks_same_thread_only(self) -> None:
+        cfg = self._load_config()
+        cfg["prevent_overlap"] = True
+        cfg["overlap_scope"] = "thread"
+        codex_peon._save_json(codex_peon.CONFIG_PATH, cfg)
+
+        state = codex_peon.load_state()
+        state["seen_threads"] = ["thread-f"]
+        state["last_event_ts"] = time.time()
+        state["playback_pid_by_thread"] = {"thread-f": os.getpid()}
+        codex_peon.save_state(state)
+
+        with mock.patch.object(codex_peon, "play_sound", return_value=None) as mocked_play:
+            codex_peon.handle_hook_payload(self._payload("thread-f", "1", "Done."))
+            codex_peon.handle_hook_payload(self._payload("thread-g", "1", "Done."))
+
+        self.assertEqual(mocked_play.call_count, 1)
 
     def test_config_set_and_keywords_add_remove(self) -> None:
         self.assertEqual(codex_peon.cmd_config_set("volume", "0.7"), 0)

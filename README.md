@@ -33,7 +33,7 @@ Sound pipeline:
 5. It resolves the active pack manifest and randomly selects a non-repeating sound from that category.
 6. Noise controls are applied:
    - per-category cooldown (`cooldowns_seconds`)
-   - optional overlap prevention (`prevent_overlap`)
+   - optional overlap prevention (`prevent_overlap`) with scope (`overlap_scope`)
 7. It plays audio with a platform backend:
    - macOS: `afplay`
    - WSL: `powershell.exe` media playback
@@ -107,6 +107,7 @@ codex-peon config get volume
 codex-peon config set volume 0.7
 codex-peon config set cooldowns_seconds.acknowledge 1.5
 codex-peon config set prevent_overlap true
+codex-peon config set overlap_scope global
 codex-peon config keywords add permission "approve this command"
 codex-peon config keywords remove permission "approve this command"
 ```
@@ -127,7 +128,8 @@ Key fields:
 - `annoyed_threshold`: number of rapid turns before `annoyed`
 - `annoyed_window_seconds`: rapid-turn window length
 - `session_start_idle_seconds`: idle gap to treat next completion as session start
-- `prevent_overlap`: when `true`, skip new playback if previous playback process is still running
+- `prevent_overlap`: default `false`; when `true`, skip new playback if previous playback process is still running
+- `overlap_scope`: `thread` (default, per thread/session) or `global` (all terminals/sessions)
 - `cooldowns_seconds`: per-category minimum seconds between plays (`default` applies fallback)
 - `keywords.*`: keyword lists for `permission`, `error`, `resource_limit` inference
 
@@ -137,6 +139,7 @@ Example noise control config:
 {
   "greeting_mode": "launch",
   "prevent_overlap": true,
+  "overlap_scope": "thread",
   "cooldowns_seconds": {
     "default": 0,
     "acknowledge": 1.5,
