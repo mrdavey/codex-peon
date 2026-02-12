@@ -1,0 +1,10 @@
+{
+  "name": "codex-peon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Warcraft-style sound notifications for Codex CLI",
+  "scripts": {
+    "test": "bash -n install.sh && bash -n uninstall.sh && bash -n codex-peon.sh && python3 -m unittest discover -s tests -p 'test_*.py' -v",
+    "build": "echo 'codex-peon has no build artifact'"
+  }
+}

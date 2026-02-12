@@ -1,0 +1,61 @@
+{
+  "active_pack": "peon",
+  "volume": 0.5,
+  "enabled": true,
+  "greeting_mode": "launch",
+  "categories": {
+    "greeting": true,
+    "acknowledge": true,
+    "complete": true,
+    "permission": true,
+    "error": true,
+    "resource_limit": true,
+    "annoyed": true
+  },
+  "annoyed_threshold": 3,
+  "annoyed_window_seconds": 10,
+  "session_start_idle_seconds": 120,
+  "prevent_overlap": true,
+  "cooldowns_seconds": {
+    "default": 0,
+    "greeting": 0,
+    "acknowledge": 0,
+    "complete": 0,
+    "permission": 0,
+    "error": 0,
+    "resource_limit": 0,
+    "annoyed": 0
+  },
+  "keywords": {
+    "permission": [
+      "needs your approval",
+      "need your approval",
+      "approval requested",
+      "approve this",
+      "approve the command",
+      "approve running",
+      "allow this command",
+      "permission prompt"
+    ],
+    "error": [
+      "error",
+      "failed",
+      "unable",
+      "cannot",
+      "can't",
+      "denied",
+      "permission denied",
+      "not found",
+      "timed out",
+      "exception"
+    ],
+    "resource_limit": [
+      "rate limit",
+      "quota",
+      "429",
+      "token limit",
+      "context length",
+      "context window"
+    ]
+  }
+}
