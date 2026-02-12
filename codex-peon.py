@@ -23,7 +23,7 @@ PACKS_DIR = HOME / "packs"
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "active_pack": "peon",
-    "volume": 0.5,
+    "volume": 1.3,
     "enabled": True,
     # Controls greeting behavior:
     # - launch: play only when using `codex-peon launch`
@@ -422,8 +422,7 @@ def maybe_play_category(
     if sound_path is None:
         return False
 
-    volume = _clamped_float(cfg.get("volume", 0.5), default=0.5, minimum=0.0)
-    volume = min(volume, 1.0)
+    volume = _clamped_float(cfg.get("volume", 1.3), default=1.3, minimum=0.0)
     playback_pid = play_sound(sound_path, volume)
 
     last_category_ts = state.get("last_category_ts")
@@ -682,10 +681,10 @@ def cmd_preview(category: str) -> int:
         return 1
 
     try:
-        volume = float(cfg.get("volume", 0.5))
+        volume = float(cfg.get("volume", 1.3))
     except (TypeError, ValueError):
-        volume = 0.5
-    volume = min(max(volume, 0.0), 1.0)
+        volume = 1.3
+    volume = max(volume, 0.0)
 
     play_sound(sound_path, volume)
     print(f"codex-peon: played {used_category} -> {sound_path.name}")

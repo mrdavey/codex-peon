@@ -121,7 +121,7 @@ Runtime file:
 Key fields:
 
 - `active_pack`: active sound pack directory name
-- `volume`: float in `[0.0, 1.0]`
+- `volume`: non-negative float (`0.0` and above)
 - `enabled`: global on/off
 - `greeting_mode`: `launch` (default), `turn_start`, `both`, or `off`
 - `categories.*`: enable/disable each routing category
